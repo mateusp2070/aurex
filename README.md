@@ -1,82 +1,158 @@
 # Aurex
 
-> Status: Prova de conceito.
+> Status: prova de conceito v2
 
-**Aurex** é um identificador compacto, legível e verificável, projetado para uso em sistemas transacionais e impressão (Data Matrix), com **checksum** para reduzir erro humano.
+![Entropy](https://img.shields.io/badge/entropy-65--90%20bits-blue)
+![Checksum](https://img.shields.io/badge/checksum-Luhn%20%7C%20CRC--20-green)
+![Base32](https://img.shields.io/badge/base32-Crockford-black)
 
-- **Formato lógico (persistido)**: `TTEEEEEEEEEEEEEC` (16 chars, Base32 Crockford)
-- **Formato de exibição (apenas visual)**: `TTEE-EEEE-EEEE-EEEC`
-- **Estrutura**:
-  - `TT` (2 chars) → namespace / tabela (Base32 Crockford)
-  - `EEEEEEEEEEEEE` (13 chars) → entidade (Base32 Crockford, **65 bits**)
-  - `C` (1 char) → checksum (**Luhn mod 32**)
+**Aurex** é uma família de identificadores compactos, legíveis e
+verificáveis, projetados para sistemas transacionais e impressão (Data
+Matrix), com namespace embutido e checksum para reduzir erro humano.
 
-> Observação: os hífens não fazem parte do ID. No banco, grave sempre **sem hífen**.
+Os IDs utilizam Base32 Crockford, priorizando legibilidade humana e
+eficiência binária.
 
----
+------------------------------------------------------------------------
 
-## Por que Aurex
+# Variantes
 
-- **Baixa probabilidade de colisão**: 13 chars Base32 = 65 bits (2^65 possibilidades por tabela)
-- **Legibilidade humana**: Base32 Crockford evita caracteres ambíguos (O/0, I/1, L/1)
-- **Compacto**: 16 chars, ideal para Data Matrix e campos curtos
-- **Checksum**: Luhn mod 32 detecta erros comuns de digitação e transposição adjacente
+## Aurex16 (default)
 
-### Probabilidade de colisão 
+Alias: `Aurex`
 
-| IDs gerados na mesma tabela (k) | Probabilidade de colisão (p) |
-|----------------------------------:|------------------------------:|
-| 1.000.000                         | 1,355×10⁻⁸  (≈ 0,000001355%)  |
-| 10.000.000                        | 1,355×10⁻⁶  (≈ 0,0001355%)    |
-| 100.000.000                       | 1,355×10⁻⁴  (≈ 0,01355%)      |
-| 500.000.000                       | 3,382×10⁻³  (≈ 0,338%)        |
-| 861.000.000                       | 9,996×10⁻³  (≈ 1,00%)         |
-| 1.000.000.000                     | 1,346×10⁻²  (≈ 1,35%)         |
-| 2.788.000.000                     | 9,998×10⁻²  (≈ 10,0%)         |
-| 7.200.000.000                     | 5,047×10⁻¹  (≈ 50,5%)         |
-| 10.000.000.000                    | 7,421×10⁻¹  (≈ 74,2%)         |
+### Estrutura
 
----
+PP + EEEEEEEEEEEEE + C
 
-## Instalação
+-   16 caracteres Base32
+-   PP → 2 chars de prefixo (namespace/tabela)
+-   E → 13 chars aleatórios (65 bits)
+-   C → 1 char checksum (Luhn mod 32)
 
-Aurex está disponível no NPM.
+### Entropia
 
----
+13 chars × 5 bits = 65 bits\
+2\^65 ≈ 3.69 × 10\^19 combinações por namespace
 
-## Uso
+### Exibição
 
-```ts
-import { Aurex } from "aurex";
+XXXX-XXXX-XXXX-XXXX
 
-const aurex = new Aurex({
-  users: "A7",
+Persistência: sem hífen
+
+------------------------------------------------------------------------
+
+## Aurex24 (alta robustez)
+
+### Estrutura
+
+PP + EEEEEEEEEEEEEEEEEE + CCCC
+
+-   24 caracteres Base32
+-   PP → 2 chars prefixo
+-   E → 18 chars aleatórios (90 bits)
+-   CCCC → 4 chars checksum (CRC-20, 20 bits)
+
+### Entropia
+
+18 chars × 5 bits = 90 bits\
+2\^90 ≈ 1.23 × 10\^27 combinações por namespace
+
+### Exibição
+
+XXXX-XXXX-XXXX-XXXX-XXXX-XXXX
+
+Persistência: sem hífen
+
+------------------------------------------------------------------------
+
+# Comparação com UUID
+
+  Característica           |Aurex16     |Aurex24    |UUID v4
+  ------------------------ |----------- |-----------|----------
+  Bits aleatórios          | 65         | 90        | 122
+  Tamanho texto            | 16 chars   | 24 chars  | 36 chars
+  Tamanho binário          | 10 bytes   | 15 bytes  | 16 bytes
+  Namespace embutido       | Sim        | Sim       | Não
+  Legibilidade humana      | Alta       | Alta      | Baixa
+  Checksum                 | Sim        | Sim       | Não
+  Ideal para Data Matrix   | Excelente  | Excelente | Médio
+
+------------------------------------------------------------------------
+
+# Matemática de Colisão
+
+P ≈ 1 - exp( - n² / (2N) )
+
+Onde: - n = quantidade de IDs gerados - N = espaço total (2\^bits)
+
+## Aurex16 (65 bits)
+
+N = 2\^65 ≈ 3.69 × 10\^19
+
+  n gerados       | Probabilidade
+  --------------- | ---------------
+  1 milhão        | \~ 1.35e-8
+  10 milhões      | \~ 1.35e-6
+  100 milhões     | \~ 1.35e-4
+  \~860 milhões   | \~1%
+  \~2.7 bilhões   | \~10%
+
+## Aurex24 (90 bits)
+
+N = 2\^90 ≈ 1.23 × 10\^27
+
+  n gerados       |Probabilidade
+  --------------- |---------------
+  1 bilhão        |\~ 4e-10
+  10 bilhões      |\~ 4e-8
+  \~5 trilhões    |\~1%
+  \~16 trilhões   |\~10%
+
+------------------------------------------------------------------------
+
+# Exemplos de Implementação
+
+## Server (Node)
+
+``` ts
+import { Aurex, Aurex24 } from "aurex";
+
+const a16 = new Aurex({
+  users: "U1",
   patients: "P2",
-  invoices: "F0",
 });
 
-// gerar para uma tabela
-const id = aurex.generateForTable("users");  // ex: "A7F3K9X2Q4M8T6C1"
+const id16 = a16.generateForTable("users");
+console.log(a16.format(id16));
+console.log(a16.validate(id16));
+```
 
-// exibir para humanos
-const view = aurex.format(id);               // "A7F3-K9X2-Q4M8-T6C1"
+## Web (Browser)
 
-// aceitar input humano com/sem hífen
-const normalized = aurex.normalize(view);    // "A7F3K9X2Q4M8T6C1"
+``` ts
+import { AurexWeb } from "aurex";
 
-// validar (charset + checksum + prefixo conhecido)
-const ok = aurex.validate(id);               // true
+AurexWeb.isPlausible(id);
+AurexWeb.validateChecksum(id);
+AurexWeb.format(id);
+```
 
-// parse com resolução de tabela
-const parsed = aurex.parse(id);
-/*
-{
-  table: "users",
-  prefix: "A7",
-  entity: "F3K9X2Q4M8T6C",
-  checksum: "1",
-  raw: "A7F3K9X2Q4M8T6C1",
-  view: "A7F3-K9X2-Q4M8-T6C1"
+### Web Input Mask
+
+```ts
+function onInput(e: InputEvent) {
+  const el = e.target as HTMLInputElement;
+  const caret = el.selectionStart ?? el.value.length;
+
+  const out = AurexWeb.sanitizeInput(el.value, caret);
+
+  el.value = out.value;
+  if (out.cursor !== undefined)
+    el.setSelectionRange(out.cursor, out.cursor);
+
+  const complete = out.raw.length === 16 || out.raw.length === 24;
+  const ok = complete ? AurexWeb.validateChecksum(out.raw) : true;
 }
-*/
 ```
