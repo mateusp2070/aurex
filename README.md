@@ -1,5 +1,7 @@
 # Aurex
 
+![Aurex Logo](./logo.png)
+
 > Status: prova de conceito v2
 
 ![Entropy](https://img.shields.io/badge/entropy-65--90%20bits-blue)
