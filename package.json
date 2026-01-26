@@ -4,9 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    "./server": "./src/index.node.ts",
+    "./server": "./src/index.server.ts",
     "./browser": "./src/index.browser.ts"
   },
+  "files": [
+    "src"
+  ],
   "author": {
     "name": "Mateus Pires",
     "url": "https://github.com/mateusp2070"
