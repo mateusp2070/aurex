@@ -1,0 +1,8 @@
+attribute @@aurex(fields: FieldReference[], prefix: String?)
+
+type AurexModel {
+    id String @id @db.Char(16)
+
+    @@aurex(fields: [id])
+}
+

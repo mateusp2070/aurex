@@ -1,0 +1,26 @@
+{
+  "name": "zenstack-aurex-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "exports": {
+    "./plugin.zmodel": "./plugin.zmodel",
+    "./package.json": "./package.json",
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "plugin.zmodel",
+    "dist"
+  ],
+  "dependencies": {
+    "@zenstackhq/common-helpers": "^3.2.1",
+    "@zenstackhq/orm": "^3.2.1",
+    "@zenstackhq/sdk": "^3.2.1",
+    "aurex": "link:aurex"
+  }
+}
