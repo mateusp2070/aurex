@@ -1,21 +1,23 @@
-// src/core.ts
-// AurexCore: funções puras e compartilhadas (sem dependências de ambiente).
-// Suporta Aurex16 (Luhn mod 32) e Aurex24 (CRC-20, 4 chars Base32).
-
 import { enumerate } from "./helpers";
 
 export type AurexVariant = "A16" | "A24";
 
 export type AurexCoreOptions = {
-  /** Aceita caracteres ambíguos (O→0, I/L→1). Default: true */
+  /**
+   * (O→0, I/L→1)
+   *
+   * @default true
+   */
   humanNormalize?: boolean;
 };
 
 export class AurexCore {
-  static readonly ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-  static readonly BASE = 32;
+  readonly ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+  readonly BASE = 32;
 
-  static readonly CHAR_TO_VAL: Record<string, number> = (() => {
+  constructor(public readonly opts: AurexCoreOptions = {}) {}
+
+  readonly CHAR_TO_VAL: Record<string, number> = (() => {
     const map: Record<string, number> = {};
 
     for (const [char, index] of enumerate(this.ALPHABET)) map[char] = index;
@@ -23,20 +25,16 @@ export class AurexCore {
     return map;
   })();
 
-  static normalize(input: string, opts: AurexCoreOptions = {}): string {
+  normalize(input: string): string {
     const raw = String(input).replace(/[-\s]/g, "");
     let up = raw.toUpperCase();
-    const human = opts.humanNormalize !== false;
+    const human = this.opts.humanNormalize !== false;
     if (human) up = up.replaceAll(/O/g, "0").replaceAll(/[IL]/g, "1");
     return up;
   }
 
-  static format(
-    rawOrView: string,
-    variant: AurexVariant,
-    opts: AurexCoreOptions = {},
-  ): string {
-    const s = AurexCore.normalize(rawOrView, opts);
+  format(rawOrView: string, variant: AurexVariant): string {
+    const s = this.normalize(rawOrView);
     const len = variant === "A16" ? 16 : 24;
     if (s.length !== len)
       throw new Error(
@@ -47,10 +45,10 @@ export class AurexCore {
     return parts.join("-");
   }
 
-  static toValues(s: string): number[] {
+  toValues(s: string): number[] {
     const vals: number[] = [];
     for (const ch of s) {
-      const v = AurexCore.CHAR_TO_VAL[ch];
+      const v = this.CHAR_TO_VAL[ch];
       if (v === undefined) throw new Error(`Aurex: invalid character "${ch}".`);
       vals.push(v);
     }
@@ -59,8 +57,8 @@ export class AurexCore {
 
   // ---------------- Luhn mod 32 (A16) ----------------
 
-  static luhnModNCheckValue(values: number[]): number {
-    const base = AurexCore.BASE;
+  luhnModNCheckValue(values: number[]): number {
+    const base = this.BASE;
     let sum = 0;
     let doubleIt = true;
     for (let value of values.toReversed()) {
@@ -74,24 +72,21 @@ export class AurexCore {
     return (base - (sum % base)) % base;
   }
 
-  static computeLuhnCheckChar(body15: string): string {
+  computeLuhnCheckChar(body15: string): string {
     if (body15.length !== 15)
       throw new Error("Aurex16: body must have 15 characters.");
-    const vals = AurexCore.toValues(body15);
-    const checkVal = AurexCore.luhnModNCheckValue(vals);
-    return AurexCore.ALPHABET[checkVal]!;
+    const vals = this.toValues(body15);
+    const checkVal = this.luhnModNCheckValue(vals);
+    return this.ALPHABET[checkVal]!;
   }
 
-  static validateChecksumA16(
-    rawOrView: string,
-    opts: AurexCoreOptions = {},
-  ): boolean {
+  validateChecksumA16(rawOrView: string): boolean {
     try {
-      const s = AurexCore.normalize(rawOrView, opts);
+      const s = this.normalize(rawOrView);
       if (s.length !== 16) return false;
       const body = s.slice(0, 15);
       const check = s.slice(15);
-      const expected = AurexCore.computeLuhnCheckChar(body);
+      const expected = this.computeLuhnCheckChar(body);
       return expected === check;
     } catch {
       return false;
@@ -102,7 +97,7 @@ export class AurexCore {
   // CRC-20/CDMA2000:
   // width: 20, poly: 0xC1ACF, init: 0xFFFFF, refin/refout: false, xorout: 0x00000
 
-  static crc20(bytes: Uint8Array): number {
+  crc20(bytes: Uint8Array): number {
     const width = 20;
     const poly = 0xc1acf;
     let crc = 0xfffff;
@@ -120,66 +115,57 @@ export class AurexCore {
     return crc & mask;
   }
 
-  static encodeBase32Bits(value: number, chars: number): string {
+  encodeBase32Bits(value: number, chars: number): string {
     let out = "";
     for (let i = chars - 1; i >= 0; i--) {
       const shift = i * 5;
       const v = (value >> shift) & 31;
-      out += AurexCore.ALPHABET[v];
+      out += this.ALPHABET[v];
     }
     return out;
   }
 
-  static computeCrc20CheckChars(body20: string): string {
+  computeCrc20CheckChars(body20: string): string {
     if (body20.length !== 20)
       throw new Error("Aurex24: body must have 20 characters.");
-    const bytes = AurexCore.packBase32ToBytes(body20);
-    const crc = AurexCore.crc20(bytes);
-    return AurexCore.encodeBase32Bits(crc, 4);
+    const bytes = this.packBase32ToBytes(body20);
+    const crc = this.crc20(bytes);
+    return this.encodeBase32Bits(crc, 4);
   }
 
-  static validateChecksumA24(
-    rawOrView: string,
-    opts: AurexCoreOptions = {},
-  ): boolean {
+  validateChecksumA24(rawOrView: string): boolean {
     try {
-      const s = AurexCore.normalize(rawOrView, opts);
+      const s = this.normalize(rawOrView);
       if (s.length !== 24) return false;
       const body = s.slice(0, 20);
       const check = s.slice(20, 24);
-      const expected = AurexCore.computeCrc20CheckChars(body);
+      const expected = this.computeCrc20CheckChars(body);
       return expected === check;
     } catch {
       return false;
     }
   }
 
-  static detectVariant(
-    rawOrView: string,
-    opts: AurexCoreOptions = {},
-  ): AurexVariant | null {
-    const s = AurexCore.normalize(rawOrView, opts);
+  detectVariant(rawOrView: string): AurexVariant | null {
+    const s = this.normalize(rawOrView);
     if (s.length === 16) return "A16";
     if (s.length === 24) return "A24";
     return null;
   }
 
   /** Único método pensado para exposição no browser build. */
-  static validateChecksum(
-    rawOrView: string,
-    opts: AurexCoreOptions = {},
-  ): boolean {
-    const v = AurexCore.detectVariant(rawOrView, opts);
+  validateChecksum(rawOrView: string): boolean {
+    const v = this.detectVariant(rawOrView);
     if (!v) return false;
     return v === "A16"
-      ? AurexCore.validateChecksumA16(rawOrView, opts)
-      : AurexCore.validateChecksumA24(rawOrView, opts);
+      ? this.validateChecksumA16(rawOrView)
+      : this.validateChecksumA24(rawOrView);
   }
 
-  // ---------------- Bit packing helpers (genéricos) ----------------
+  // ---------------- Bit packing helpers  ----------------
 
-  static packBase32ToBytes(raw: string): Uint8Array {
-    const vals = AurexCore.toValues(raw);
+  packBase32ToBytes(raw: string): Uint8Array {
+    const vals = this.toValues(raw);
     const totalBits = vals.length * 5;
     const out = new Uint8Array(Math.ceil(totalBits / 8));
 
@@ -206,7 +192,7 @@ export class AurexCore {
     return out;
   }
 
-  static unpackBytesToBase32(bytes: Uint8Array, chars: number): string {
+  unpackBytesToBase32(bytes: Uint8Array, chars: number): string {
     let bitBuffer = 0;
     let bitCount = 0;
     let out = "";
@@ -218,7 +204,7 @@ export class AurexCore {
       while (bitCount >= 5 && out.length < chars) {
         const shift = bitCount - 5;
         const v = (bitBuffer >> shift) & 31;
-        out += AurexCore.ALPHABET[v];
+        out += this.ALPHABET[v];
         bitCount -= 5;
         bitBuffer &= (1 << bitCount) - 1;
       }

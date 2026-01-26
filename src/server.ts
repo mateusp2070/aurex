@@ -13,20 +13,19 @@ export type ParsedAurex<TableKey extends PropertyKey = string> = {
   view: string;
 };
 
-abstract class AurexBase<Table extends PrefixTable> {
-  readonly opts: AurexCoreOptions;
+abstract class AurexBase<Table extends PrefixTable> extends AurexCore {
   readonly __tableToPrefix = new Map<keyof Table, string>();
   readonly __prefixToTable = new Map<string, keyof Table>();
 
   abstract variant: AurexVariant;
 
   constructor(prefixTable: Table, opts: AurexCoreOptions = {}) {
-    this.opts = opts;
+    super(opts);
 
     for (const [table, prefixRaw] of Object.entries(prefixTable) as Array<
       [keyof Table, string]
     >) {
-      const prefix = AurexCore.normalize(prefixRaw, this.opts);
+      const prefix = this.normalize(prefixRaw);
       const prefixLen = this.prefixLength();
 
       if (prefix.length !== prefixLen) {
@@ -35,7 +34,7 @@ abstract class AurexBase<Table extends PrefixTable> {
         );
       }
 
-      AurexCore.toValues(prefix);
+      this.toValues(prefix);
 
       if (this.__tableToPrefix.has(table))
         throw new Error(`Aurex: duplicated table key "${String(table)}".`);
@@ -51,12 +50,8 @@ abstract class AurexBase<Table extends PrefixTable> {
     }
   }
 
-  normalize(idOrView: string): string {
-    return AurexCore.normalize(idOrView, this.opts);
-  }
-
-  format(idOrView: string): string {
-    return AurexCore.format(idOrView, this.variant, this.opts);
+  override format(rawOrView: string): string {
+    return super.format(rawOrView, this.variant);
   }
 
   prefixFromTable(table: keyof Table): string {
@@ -81,7 +76,6 @@ abstract class AurexBase<Table extends PrefixTable> {
     return table;
   }
 
-  /** Valida checksum + prefixo conhecido nesta instância */
   validate(idOrView: string): boolean {
     try {
       const raw = this.normalize(idOrView);
@@ -93,8 +87,8 @@ abstract class AurexBase<Table extends PrefixTable> {
       if (!this.__prefixToTable.has(prefix)) return false;
 
       return this.variant === "A16"
-        ? AurexCore.validateChecksumA16(raw, this.opts)
-        : AurexCore.validateChecksumA24(raw, this.opts);
+        ? this.validateChecksumA16(raw)
+        : this.validateChecksumA24(raw);
     } catch {
       return false;
     }
@@ -142,7 +136,7 @@ abstract class AurexBase<Table extends PrefixTable> {
       );
     if (!this.validate(raw))
       throw new Error("Aurex: invalid checksum/format or unknown prefix.");
-    return AurexCore.packBase32ToBytes(raw);
+    return this.packBase32ToBytes(raw);
   }
 
   fromBytes(bytes: Uint8Array, opts?: { format?: boolean }): string {
@@ -152,7 +146,7 @@ abstract class AurexBase<Table extends PrefixTable> {
     if (bytes.length !== expectedBytes)
       throw new Error(`Aurex: bytes must have length ${expectedBytes}.`);
 
-    const raw = AurexCore.unpackBytesToBase32(bytes, this.totalLength());
+    const raw = this.unpackBytesToBase32(bytes, this.totalLength());
     if (!this.validate(raw))
       throw new Error(
         "Aurex: invalid checksum/format or unknown prefix (decoded).",
@@ -167,8 +161,8 @@ abstract class AurexBase<Table extends PrefixTable> {
 
     const checksum =
       this.variant === "A16"
-        ? AurexCore.computeLuhnCheckChar(body) // body 15
-        : AurexCore.computeCrc20CheckChars(body); // body 20
+        ? this.computeLuhnCheckChar(body) // body 15
+        : this.computeCrc20CheckChars(body); // body 20
 
     return body + checksum;
   }
@@ -207,7 +201,7 @@ abstract class AurexBase<Table extends PrefixTable> {
       while (accBits >= 5 && out.length < len) {
         const shift = accBits - 5;
         const v = (acc >> shift) & 31;
-        out += AurexCore.ALPHABET[v];
+        out += this.ALPHABET[v];
         accBits -= 5;
         acc = acc & ((1 << accBits) - 1);
       }
@@ -228,6 +222,6 @@ export class Aurex24<Table extends PrefixTable> extends AurexBase<Table> {
   readonly variant = "A24" as const;
 }
 
-const Aurex = Aurex16;
+export const Aurex = Aurex16;
 
 export default Aurex;
