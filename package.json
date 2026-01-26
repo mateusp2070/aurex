@@ -7,6 +7,9 @@
     "./server": "./dist/index.server.js",
     "./browser": "./dist/index.browser.js"
   },
+  "scripts": {
+    "prepack": "bun ./scripts/build"
+  },
   "files": [
     "dist"
   ],
