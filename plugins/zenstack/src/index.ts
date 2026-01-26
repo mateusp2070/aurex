@@ -50,9 +50,7 @@ function collectAurexModels(context: CliGeneratorContext): AurexModel[] {
     }
 
     const aurexAttr = ModelUtils.getAttribute(decl, "aurex");
-    const prefix = aurexCore
-      .computeCrc20CheckChars(decl.name.padEnd(20, "0").slice(0, 20))
-      .slice(0, 2);
+    const prefix = ""; // ver alguma lógica para prefixo padrão
 
     if (aurexAttr) {
       models.push({
