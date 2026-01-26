@@ -1,0 +1,19 @@
+{
+  "name": "aurex",
+  "description": "ID for humans",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./server": "./src/index.node.ts",
+    "./browser": "./src/index.browser.ts"
+  },
+  "author": {
+    "name": "Mateus Pires",
+    "url": "https://github.com/mateusp2070"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tsconfig/bun": "^1.0.10",
+    "@types/bun": "^1.3.6"
+  }
+}
