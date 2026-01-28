@@ -1,8 +1,7 @@
-attribute @@aurex(fields: FieldReference[], prefix: String?)
+attribute @@aurex(prefix: String?)
 
-type AurexModel {
-    id String @id @db.Char(16)
-
-    @@aurex(fields: [id])
+type Aurex {
+    id String @id @db.VarChar(24) @default(dbgenerated("aurex::generate_id()"))
 }
+
 

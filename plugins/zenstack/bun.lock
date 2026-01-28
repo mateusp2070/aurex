@@ -8,10 +8,11 @@
         "@zenstackhq/common-helpers": "^3.2.1",
         "@zenstackhq/orm": "^3.2.1",
         "@zenstackhq/sdk": "^3.2.1",
-        "aurex": "link:aurex",
+        "aurex": "^0.1.0",
       },
       "devDependencies": {
         "@types/bun": "latest",
+        "kysely": "^0.28.10",
       },
       "peerDependencies": {
         "typescript": "^5",
@@ -47,7 +48,7 @@
 
     "@zenstackhq/sdk": ["@zenstackhq/sdk@3.2.1", "", { "dependencies": { "@zenstackhq/common-helpers": "3.2.1", "@zenstackhq/language": "3.2.1", "langium": "3.5.0", "ts-pattern": "^5.7.1", "typescript": "^5.9.3" } }, "sha512-kfdjoD14E29dPenoHndStrIiW99RgFG5G1SZwyPe272wuG2QtGN14ORN27tMz/AV4aKvZd6RJg6sfs0nFG+VeA=="],
 
-    "aurex": ["aurex@link:aurex", {}],
+    "aurex": ["aurex@0.1.0", "", {}, "sha512-CmnmXiNyG21ddI+F/8xE2/jOmBJTh1utD+Yj+peWkPeRaf0pYXLbEE+SAHpWyeIJN5FMRL9sTBz0zol/Tnpr5Q=="],
 
     "bun-types": ["bun-types@1.3.6", "", { "dependencies": { "@types/node": "*" } }, "sha512-OlFwHcnNV99r//9v5IIOgQ9Uk37gZqrNMCcqEaExdkVq3Avwqok1bJFmvGMCkCE0FqzdY8VMOZpfpR3lwI+CsQ=="],
 
