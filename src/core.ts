@@ -49,7 +49,8 @@ export class AurexCore {
     const vals: number[] = [];
     for (const ch of s) {
       const v = this.CHAR_TO_VAL[ch];
-      if (v === undefined) throw new Error(`Aurex: invalid character "${ch}".`);
+      if (v === undefined)
+        throw new Error(`Aurex: invalid character "${ch}". Input: "${s}"`);
       vals.push(v);
     }
     return vals;
@@ -153,7 +154,6 @@ export class AurexCore {
     return null;
   }
 
-  /** Único método pensado para exposição no browser build. */
   validateChecksum(rawOrView: string): boolean {
     const v = this.detectVariant(rawOrView);
     if (!v) return false;

@@ -1,10 +1,10 @@
 import { build, Glob, $ } from "bun";
-import { rmSync } from "fs";
+import { existsSync, rmSync } from "fs";
 
-rmSync("./dist", { recursive: true });
+if (existsSync("./dist")) rmSync("./dist", { recursive: true });
 
 await build({
-  entrypoints: Array.from(new Glob("./src/index.*.ts").scanSync()),
+  entrypoints: Array.from(new Glob("./src/index{.*.ts,.ts}").scanSync()),
   minify: true,
   outdir: "./dist",
   target: "node",
