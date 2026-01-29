@@ -10,7 +10,7 @@ import {
   ValuesNode,
   ValueNode,
 } from "kysely";
-import type { AurexModel } from "./index";
+import type { AurexModel, ReadonlyAurexModel } from "./index";
 import {
   Aurex16,
   Aurex24,
@@ -20,12 +20,24 @@ import {
 import type { OnKyselyQueryCallback, RuntimePlugin } from "@zenstackhq/orm";
 import type { SchemaDef } from "@zenstackhq/orm/schema";
 
-export type AurexRuntimePluginOptions = {
-  models: AurexModel[];
-  variant: AurexVariant;
+export type Manifest<Variant extends AurexVariant = AurexVariant> = {
+  readonly models: readonly ReadonlyAurexModel[];
+  readonly variant: Variant;
 };
 
-function fromModelsToPrefixTable(models: AurexModel[]): PrefixTable {
+type InferAurex<M extends Manifest> = M["variant"] extends "A16"
+  ? Aurex16<InferPrefixTable<M["models"]>>
+  : M["variant"] extends "A24"
+    ? Aurex24<InferPrefixTable<M["models"]>>
+    : never;
+
+type InferPrefixTable<M extends readonly ReadonlyAurexModel[]> = {
+  [K in M[number]["name"]]: Extract<M[number], { name: K }>["prefix"];
+};
+
+function fromModelsToPrefixTable(
+  models: readonly ReadonlyAurexModel[],
+): PrefixTable {
   const prefixTable: PrefixTable = {};
   for (const model of models) {
     prefixTable[model.name] = model.prefix;
@@ -33,16 +45,17 @@ function fromModelsToPrefixTable(models: AurexModel[]): PrefixTable {
   return prefixTable;
 }
 
-class AurexTransformer extends OperationNodeTransformer {
-  aurex: Aurex16<PrefixTable> | Aurex24<PrefixTable>;
+class AurexTransformer<M extends Manifest> extends OperationNodeTransformer {
+  aurex: InferAurex<M>;
 
-  constructor(public options: AurexRuntimePluginOptions) {
+  constructor(public manifest: M) {
     super();
 
-    this.aurex =
-      options.variant === "A16"
-        ? new Aurex16(fromModelsToPrefixTable(options.models))
-        : new Aurex24(fromModelsToPrefixTable(options.models));
+    this.aurex = (
+      manifest.variant === "A16"
+        ? new Aurex16(fromModelsToPrefixTable(manifest.models))
+        : new Aurex24(fromModelsToPrefixTable(manifest.models))
+    ) as InferAurex<M>;
   }
 
   protected override transformInsertQuery(
@@ -79,9 +92,9 @@ class AurexTransformer extends OperationNodeTransformer {
     return tableNode.table.identifier.name;
   }
 
-  private isIdField(modelName: string, fieldName: string): boolean {
-    const model = this.options.models.find(
-      (m) => m.name === modelName && m.idFields.includes(fieldName),
+  private isAurexField(modelName: string, fieldName: string): boolean {
+    const model = this.manifest.models.find(
+      (m) => m.name === modelName && m.aurexFields.includes(fieldName),
     );
 
     return model !== undefined;
@@ -102,7 +115,7 @@ class AurexTransformer extends OperationNodeTransformer {
         const transformedValues = valueList.values.map((value, index) => {
           const fieldName = columns[index]?.column.name;
 
-          if (!fieldName || !this.isIdField(modelName, fieldName)) {
+          if (!fieldName || !this.isAurexField(modelName, fieldName)) {
             return value;
           }
 
@@ -115,12 +128,13 @@ class AurexTransformer extends OperationNodeTransformer {
       // Handle ValueListNode (contains a list of ValueNode)
       const transformedValues = valueList.values.map((valueNode, index) => {
         const colNode = columns[index];
-        if (!colNode || !ColumnNode.is(colNode)) {
+        if (!colNode) {
           return valueNode;
         }
+
         const fieldName = colNode.column.name;
 
-        if (!this.isIdField(modelName, fieldName)) {
+        if (!this.isAurexField(modelName, fieldName)) {
           return valueNode;
         }
 
@@ -136,15 +150,18 @@ class AurexTransformer extends OperationNodeTransformer {
 
 export class AurexPlugin<
   Schema extends SchemaDef,
+  _Manifest extends Manifest,
 > implements RuntimePlugin<Schema> {
-  transformer: AurexTransformer;
+  transformer: AurexTransformer<_Manifest>;
+  aurex: AurexPlugin<Schema, _Manifest>["transformer"]["aurex"];
 
-  constructor(public options: AurexRuntimePluginOptions) {
-    this.transformer = new AurexTransformer(options);
+  constructor(public manifest: _Manifest) {
+    this.transformer = new AurexTransformer(manifest);
+    this.aurex = this.transformer.aurex;
   }
 
   get id() {
-    return "zenstack-aurex-plugin";
+    return "zenstack-aurex";
   }
 
   get name() {

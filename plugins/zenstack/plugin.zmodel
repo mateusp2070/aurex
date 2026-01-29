@@ -1,7 +1,18 @@
+/**
+    * Used to override the default model prefix inference behavior.
+ */
 attribute @@aurex(prefix: String?)
 
+/**
+    * Used to mark a field as an Aurex ID field.
+ */
+attribute @aurex() @@@targetField([StringField])
+
+/**
+    * Helper type to define an Aurex model with an Aurex ID field.
+ */
 type Aurex {
-    id String @id @db.VarChar(24) @default(dbgenerated("aurex::generate_id()"))
+    id String @id @db.VarChar(24) @default("#aurex-placeholder#") @aurex
 }
 
 

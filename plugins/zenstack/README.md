@@ -12,7 +12,6 @@ identifiers with embedded namespace support.
 
 This plugin:
 
-- Automatically injects Aurex IDs into **all models**
 - Generates deterministic prefix mappings per model
 - Produces a manifest file (prefix contract)
 - Enforces collision-safe prefix inference
@@ -25,7 +24,7 @@ No per-model configuration is required.
 ## Installation
 
 ```bash
-npm install zenstack-aurex-plugin
+npm install zenstack-aurex
 ```
 
 ---
@@ -36,7 +35,7 @@ npm install zenstack-aurex-plugin
 
 ```prisma
 plugin aurex {
-  provider = "zenstack-aurex-plugin"
+  provider = "zenstack-aurex"
 
   variant = "A16"              // A16 or A24 (default: A16)
 
@@ -59,21 +58,21 @@ model User with Aurex {
 ```
 
 > `type Aurex` is a helper type that expands to a compatible
-> `id String @id @db.VarChar(24) @default(dbgenerated("#placeholder#"))` field.
+> `id String @id @db.VarChar(24) @default("#aurex-placeholder#") @aurex` field.
+
+> Note: when creating relations **always** set the foreign key type: `String @db.VarChar(24)`
 
 ---
 
 ## Important Behavior
 
-### ✅ All models are injected
+### ✅ Only models using `@aurex` on the id field are injected.
 
-Every model will automatically:
+Models that have at least one field using `@aurex` will automatically:
 
 - Receive a deterministic prefix
 - Be included in the manifest
 - Use the configured global variant
-
-You do **not** need `@@aurex` for basic usage.
 
 ---
 
@@ -109,7 +108,7 @@ const manifest = {
         prefix: "FA";
     }
   ]
-} as const;
+};
 export default manifest;
 ```
 
@@ -135,7 +134,7 @@ In your application:
 
 ```ts
 import manifest from "../aurex-manifest.ts";
-import { AurexPlugin } from "zenstack-aurex-plugin";
+import { AurexPlugin } from "zenstack-aurex";
 
 db.$use(new AurexPlugin(manifest));
 ```

@@ -11,6 +11,26 @@ import path from "path";
 import { promises as fs } from "fs";
 import * as AST from "@zenstackhq/language/ast";
 
+function flatMixinFields(mixin: AST.Reference<AST.TypeDef>): AST.DataField[] {
+  return [
+    ...(mixin.ref?.fields || []),
+    ...(mixin.ref?.mixins.flatMap((mixin) => flatMixinFields(mixin)) || []),
+  ];
+}
+
+function flatBaseModelFields(
+  baseModel: AST.Reference<AST.DataModel>,
+): AST.DataField[] {
+  return [
+    ...(baseModel.ref?.$allFields || []),
+    ...(baseModel.ref?.fields || []),
+    ...(baseModel.ref?.mixins.flatMap((mixin) => flatMixinFields(mixin)) || []),
+    ...(baseModel.ref?.baseModel
+      ? flatBaseModelFields(baseModel.ref.baseModel)
+      : []),
+  ];
+}
+
 class AurexModelUtils {
   aurex = new AurexCore();
   options: Record<string, unknown>;
@@ -104,23 +124,39 @@ class AurexModelUtils {
         continue;
       }
 
+      let aurexFields = new Set<string>();
+
+      const resolvedFields = [
+        ...decl.mixins.flatMap(flatMixinFields),
+        ...(decl.baseModel ? flatBaseModelFields(decl.baseModel) : []),
+        ...(decl.$allFields || []),
+        ...decl.fields,
+      ];
+
+      for (const field of resolvedFields) {
+        const isAurexField = field.attributes.some((attr) => {
+          return attr.decl.$refText === "@aurex";
+        });
+
+        if (isAurexField) {
+          aurexFields.add(field.name);
+        }
+      }
+
+      if (aurexFields.size === 0) {
+        continue;
+      }
+
       const aurexAttr = ModelUtils.getAttribute(decl, "aurex") || null;
 
       if (aurexAttr != null && !AST.isDataModelAttribute(aurexAttr)) continue;
 
       const prefix = this.getAurexPrefix(aurexAttr, decl.name, prefixes);
 
-      const idFields = ModelUtils.getIdFields(decl);
-
-      invariant(
-        idFields.length > 0,
-        `Model '${decl.name}' must have at least one ID field to be used with Aurex.`,
-      );
-
       models.push({
         name: decl.name,
         prefix,
-        idFields,
+        aurexFields: Array.from(aurexFields),
       });
     }
     return models;
@@ -128,15 +164,16 @@ class AurexModelUtils {
 }
 
 export const plugin: CliPlugin = {
-  name: "zenstack-aurex-plugin",
+  name: "zenstack-aurex",
   statusText: "Generating Aurex prefix table",
+
   async generate(context: CliGeneratorContext) {
     const utils = new AurexModelUtils(context);
     const outputPath = utils.resolveOutputPath();
     const models = utils.collectModels();
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     const payload = { models, variant: utils.getAurexVariant() };
-    const jsonPayload = JSON.stringify(payload);
+    const jsonPayload = JSON.stringify(payload, null, 2);
     await fs.writeFile(
       outputPath,
       `const manifest = ${jsonPayload} as const;\nexport default manifest;`,

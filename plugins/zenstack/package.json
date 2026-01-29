@@ -1,7 +1,14 @@
 {
-  "name": "zenstack-aurex-plugin",
+  "name": "zenstack-aurex",
   "description": "Aurex Plugin for ZenStack",
-  "version": "0.0.1",
+  "version": "0.1.1",
+  "keywords": [
+    "id",
+    "uuid",
+    "zenstack",
+    "plugin",
+    "aurex"
+  ],
   "type": "module",
   "scripts": {
     "prepack": "bun ../../scripts/build"
@@ -11,8 +18,11 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "kysely": "^0.28.10",
-    "aurex": "^0.1.0"
+    "kysely": "^0.28",
+    "aurex": "^0.1.0",
+    "@zenstackhq/common-helpers": "^3.2",
+    "@zenstackhq/orm": "^3.2",
+    "@zenstackhq/sdk": "^3.2"
   },
   "exports": {
     "./plugin.zmodel": "./plugin.zmodel",
@@ -23,9 +33,5 @@
     "plugin.zmodel",
     "dist"
   ],
-  "dependencies": {
-    "@zenstackhq/common-helpers": "^3.2.1",
-    "@zenstackhq/orm": "^3.2.1",
-    "@zenstackhq/sdk": "^3.2.1"
-  }
+  "dependencies": {}
 }
